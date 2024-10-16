@@ -1,7 +1,10 @@
 from django.urls import path
-from .views import  *
+from . import views
 
 urlpatterns = [
-    path('upload/', views.upload_pdf.urls),
-    path('answer/', views.answer_question.urls),
+    # URL for uploading the PDF
+    path('upload/', views.upload_pdf, name='upload_pdf'),
+
+    # URL for asking a question
+    path('answer/', views.answer_question, name='answer_question'),
 ]
