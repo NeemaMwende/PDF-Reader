@@ -1,6 +1,6 @@
 import os
 import openai
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.core.files.storage import FileSystemStorage
 from django.conf import settings
@@ -12,6 +12,9 @@ from .models import PDFDocument  # If needed
 # Load OpenAI API key from .env file
 load_dotenv()
 openai.api_key = os.getenv('OPENAI_API_KEY')
+
+def index(request):
+    return render(request, 'index.html')
 
 def extract_text_from_pdf(file_path):
     text = ""
