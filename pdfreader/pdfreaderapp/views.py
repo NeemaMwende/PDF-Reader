@@ -1,5 +1,7 @@
 import os
-import openai
+from openai import OpenAI
+
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))  # Correct import
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.core.files.storage import FileSystemStorage
@@ -8,14 +10,13 @@ from dotenv import load_dotenv
 import pdfplumber
 from pdf2image import convert_from_path
 from django.views.decorators.csrf import csrf_exempt
-
+import json
 
 # Load OpenAI API key from .env file
 load_dotenv()
-openai.api_key = os.getenv('OPENAI_API_KEY')
 
-def index(request):
-    return render(request, 'index.html')
+# def index(request):
+#     return render(request, 'index.html')
 
 # Function to extract text from the uploaded PDF
 def extract_text_from_pdf(file_path):
@@ -65,29 +66,34 @@ def upload_pdf(request):
 
     return JsonResponse({"error": "Invalid request"}, status=400)
 
-# Endpoint to handle question answering based on the PDF content
+@csrf_exempt
 def answer_question(request):
     if request.method == 'POST':
-        question = request.POST.get('question')
-        pdf_text = request.POST.get('document_text')  # Text passed from frontend
+        try:
+            # Parse the incoming JSON request body
+            data = json.loads(request.body)
+            question = data.get('question')
+            pdf_text = data.get('document_text')
 
-        if question and pdf_text:
-            try:
-                # Call OpenAI API to answer the question based on PDF content
-                response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are an assistant."},
-                        {"role": "user", "content": f"Based on the following information from the PDF: {pdf_text}. {question}"}
-                    ],
-                    max_tokens=150,
-                    temperature=0.5
-                )
-                response_text = response['choices'][0]['message']['content'].strip()
+            if not question or not pdf_text:
+                return JsonResponse({'error': "Both 'question' and 'document_text' are required."}, status=400)
 
-                return JsonResponse({'answer': response_text})
+            # Call OpenAI API to answer the question based on PDF content
+            response = client.chat.completions.create(model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an assistant."},
+                {"role": "user", "content": f"Based on the following information from the PDF: {pdf_text}. {question}"}
+            ],
+            max_tokens=100,
+            temperature=0.5)
 
-            except Exception as e:
-                return JsonResponse({'error': f"Error: {str(e)}"}, status=500)
+            response_text = response.choices[0].message.content.strip()
 
-    return JsonResponse({"error": "Invalid request"}, status=400)
+            return JsonResponse({'answer': response_text})
+
+        except json.JSONDecodeError:
+            return JsonResponse({'error': "Invalid JSON format"}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': f"An unexpected error occurred: {str(e)}"}, status=500)
+
+    return JsonResponse({"error": "Invalid request method. Only POST requests are allowed."}, status=400)
