@@ -1,1 +1,3 @@
 web: gunicorn pdfreader.wsgi --log-file -
+web: gunicorn pdfreader.wsgi:application
+
